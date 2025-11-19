@@ -1,0 +1,50 @@
+services:
+  # Servidor web con PHP
+  web:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile-php-alumnos
+    ports:
+      - "8080:80"
+    volumes:
+      - ./proyecto:/var/www/html
+    networks:
+      - lamp_network
+    depends_on:
+      - db
+
+  # Base de datos MariaDB
+  db:
+    image: mariadb:10.11
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: alumno
+      MYSQL_PASSWORD: alumno
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - lamp_network
+
+  # phpMyAdmin para gestión visual de la BD
+  phpmyadmin:
+    image: phpmyadmin:latest
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - lamp_network
+    depends_on:
+      - db
+
+volumes:
+  mariadb_data:
+
+networks:
+  lamp_network:
+    driver: bridge
