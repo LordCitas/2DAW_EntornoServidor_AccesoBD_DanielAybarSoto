@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ejemplo PHP + MariaDB</title>
+    <title>Tienda de Frutas</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -60,15 +60,92 @@
 
             echo "<p class='success'>✅ Conexión exitosa a la base de datos</p>";
 
-            // Crear tabla de ejemplo si no existe
+            //Ejercicio 1: Creamos las tablas
             $pdo->exec("
                 CREATE TABLE IF NOT EXISTS categorias (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     nombre VARCHAR(100) NOT NULL,
                     descripcion VARCHAR(100),
+                    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(nombre)
+                );
+
+                CREATE TABLE IF NOT EXISTS productos (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nombre VARCHAR(100) NOT NULL,
+                    categoria_id INT NOT NULL,
+                    precio FLOAT NOT NULL,
+                    stock INT NOT NULL DEFAULT 0,
+                    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    
+                    FOREIGN KEY (categoria_id) REFERENCES categorias(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nombre VARCHAR(100) NOT NULL,
+                    email VARCHAR(100) NOT NULL,
+                    contraseña VARCHAR(100) NOT NULL,
                     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
+                );
+
+                CREATE TABLE IF NOT EXISTS pedidos (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    usuario_id INT NOT NULL,
+                    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    total FLOAT NOT NULL,
+                    
+                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                );
             ");
+
+            $categorias = ['Cítricos', 'Frutas Rojas', 'Tropicales'];
+            try {
+                $pdo->beginTransaction();
+                $stmt = $pdo->prepare(
+                        'INSERT INTO categorias (nombre) VALUES(?)' );
+                $insertados = 0;
+                foreach ($categorias as $c) {
+                    $stmt->execute([ $c ]);
+                    $insertados++;
+                }
+                $pdo->commit();
+                echo 'Insertadas ' . $insertados . ' entradas en la tabla \'categorias\'';
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                echo 'Error: ' . $e->getMessage();
+            }
+
+            $productos = [
+                    ['Naranja', 1, 0.3, 25],
+                    ['Limón', 1, 0.4, 50],
+                    ['Pomelo', 1, 1, 10],
+                    ['Lima', 1, 0.55, 20],
+                    ['Frambuesa', 2, 1.6, 50],
+                    ['Arándano', 2, 3, 7],
+                    ['Ciruela', 2, 0.3, 100],
+                    ['Piña', 3, 5, 4],
+                    ['Aguacate', 3, 0.57, 25],
+                    ['Tamarindo', 3, 4, 5]
+            ];
+
+            try {
+                $pdo->beginTransaction();
+                $stmt = $pdo->prepare(
+                        'INSERT INTO productos (nombre) VALUES(?)' );
+                $insertados = 0;
+                foreach ($productos as $p) {
+                    if ($p['precio'] > 0) {
+                        $stmt->execute([ $p['nombre'], $p['categoria_id'], $p['precio'], $p['stock'] ]);
+                        $insertados++;
+                    }
+                }
+                $pdo->commit();
+                echo 'Insertados: ' . $insertados;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                echo 'Error: ' . $e->getMessage();
+            }
 
             // Insertar datos de ejemplo si la tabla está vacía
             $count = $pdo->query("SELECT COUNT(*) FROM usuarios")->fetchColumn();
