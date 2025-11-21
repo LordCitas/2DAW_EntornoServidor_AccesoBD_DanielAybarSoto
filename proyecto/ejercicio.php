@@ -54,6 +54,8 @@
         $username = 'alumno';
         $password = 'alumno';
 
+        $nl = (php_sapi_name() === 'cli') ? PHP_EOL : "<br>\n";
+
         try {
             $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -85,7 +87,7 @@
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     nombre VARCHAR(100) NOT NULL,
                     email VARCHAR(100) NOT NULL,
-                    contraseña VARCHAR(100) NOT NULL,
+                    contrasenia VARCHAR(100) NOT NULL DEFAULT ('contraseña'),
                     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
 
@@ -99,40 +101,54 @@
                 );
             ");
 
+            //Ejercicio 2: insertar valores iniciales en las tablas productos y categorías
+            //Definimos el array de categorías a insertar
             $categorias = ['Cítricos', 'Frutas Rojas', 'Tropicales'];
+
+            //Vamos a insertarlo con un bloque try/catch
             try {
                 $pdo->beginTransaction();
+
+                //Definimos un proceso abstracto al que podremos llamar para insertar valores en la tabla
                 $stmt = $pdo->prepare(
                         'INSERT INTO categorias (nombre) VALUES(?)' );
+
+                //Definimos un contador para saber cuántas inserciones hacemos
                 $insertados = 0;
+
+                //Recorremos todos los elementos del array anterior y vamos insertando
                 foreach ($categorias as $c) {
                     $stmt->execute([ $c ]);
                     $insertados++;
                 }
+
+                //Confirmamos las inserciones y mostramos el resultado
                 $pdo->commit();
-                echo 'Insertadas ' . $insertados . ' entradas en la tabla \'categorias\'';
-            } catch (Exception $e) {
+                echo $insertados . ' entradas han sido insertadas en la tabla \'categorias\'' . $nl;
+            } catch (Exception $e) { //Si hay algún error, deshacemos los cambios y mostramos un mensaje
                 $pdo->rollBack();
                 echo 'Error: ' . $e->getMessage();
             }
 
+            //Definimos el array de productos para insertar
             $productos = [
-                    ['Naranja', 1, 0.3, 25],
-                    ['Limón', 1, 0.4, 50],
-                    ['Pomelo', 1, 1, 10],
-                    ['Lima', 1, 0.55, 20],
-                    ['Frambuesa', 2, 1.6, 50],
-                    ['Arándano', 2, 3, 7],
-                    ['Ciruela', 2, 0.3, 100],
-                    ['Piña', 3, 5, 4],
-                    ['Aguacate', 3, 0.57, 25],
-                    ['Tamarindo', 3, 4, 5]
+                    ['nombre' => 'Naranja', 'categoria_id' => 1, 'precio' => 0.3, 'stock' => 25],
+                    ['nombre' => 'Limón', 'categoria_id' => 1, 'precio' => 0.4, 'stock' => 50],
+                    ['nombre' => 'Pomelo', 'categoria_id' => 1, 'precio' => 1, 'stock' => 10],
+                    ['nombre' => 'Lima', 'categoria_id' => 1, 'precio' => 0.55, 'stock' => 20],
+                    ['nombre' => 'Frambuesa', 'categoria_id' => 2, 'precio' => 1.6, 'stock' => 50],
+                    ['nombre' => 'Arándano', 'categoria_id' => 2, 'precio' => 3, 'stock' => 7],
+                    ['nombre' => 'Ciruela', 'categoria_id' => 2, 'precio' => 0.3, 'stock' => 100],
+                    ['nombre' => 'Piña', 'categoria_id' => 3, 'precio' => 5, 'stock' => 4],
+                    ['nombre' => 'Aguacate', 'categoria_id' => 3, 'precio' => 0.57, 'stock' => 25],
+                    ['nombre' => 'Tamarindo', 'categoria_id' => 3, 'precio' => 4, 'stock' => 5]
             ];
 
             try {
                 $pdo->beginTransaction();
-                $stmt = $pdo->prepare(
-                        'INSERT INTO productos (nombre) VALUES(?)' );
+                $stmt = $pdo->prepare('
+                    INSERT INTO productos (nombre, categoria_id, precio, stock) VALUES(?,?,?,?);
+                ');
                 $insertados = 0;
                 foreach ($productos as $p) {
                     if ($p['precio'] > 0) {
@@ -141,7 +157,23 @@
                     }
                 }
                 $pdo->commit();
-                echo 'Insertados: ' . $insertados;
+                echo $insertados . ' entradas han sido insertadas en la tabla \'productos\'' . $nl;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                echo 'Error: ' . $e->getMessage();
+            }
+
+            //Ejercicio 3: Consultas SELECT básicas
+            //3.A Obtener todos los productos ordenados por precio (menor a mayor)
+            try{
+                $stmt = $pdo->prepare('
+                    SELECT * FROM productos ORDER BY precio ASC;
+                ');
+                $array = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($array as $a) {
+                    print_r($a);
+                }
+                print_r($array);
             } catch (Exception $e) {
                 $pdo->rollBack();
                 echo 'Error: ' . $e->getMessage();
