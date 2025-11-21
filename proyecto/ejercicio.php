@@ -79,6 +79,7 @@
                     precio FLOAT NOT NULL,
                     stock INT NOT NULL DEFAULT 0,
                     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(nombre),
                     
                     FOREIGN KEY (categoria_id) REFERENCES categorias(id)
                 );
@@ -124,10 +125,10 @@
 
                 //Confirmamos las inserciones y mostramos el resultado
                 $pdo->commit();
-                echo $insertados . ' entradas han sido insertadas en la tabla \'categorias\'' . $nl;
+                echo $insertados . ' entradas han sido insertadas en la tabla \'categorias\'' . $nl . $nl;
             } catch (Exception $e) { //Si hay algún error, deshacemos los cambios y mostramos un mensaje
                 $pdo->rollBack();
-                echo 'Error: ' . $e->getMessage();
+                echo 'Error: ' . $e->getMessage() . $nl . $nl;
             }
 
             //Definimos el array de productos para insertar
@@ -157,10 +158,39 @@
                     }
                 }
                 $pdo->commit();
-                echo $insertados . ' entradas han sido insertadas en la tabla \'productos\'' . $nl;
+                echo $insertados . ' entradas han sido insertadas en la tabla \'productos\'' . $nl . $nl;
             } catch (Exception $e) {
                 $pdo->rollBack();
-                echo 'Error: ' . $e->getMessage();
+                echo 'Error: ' . $e->getMessage() . $nl . $nl;
+            }
+
+            //Función que imprime un array asociativo
+            function imprimirArrayAsociativo($array){
+                //Variable que imprime un salto de línea adecuado según el entorno
+                $nl = (php_sapi_name() === 'cli') ? PHP_EOL : "<br>\n";
+
+                //Comprobamos si el input es un array. En caso de queno lo sea, salimos de la función mostrando un mensaje de error
+                if (!is_array($array)) {
+                    echo "El argumento no es un array." . $nl;
+                    return;
+                }
+
+                //Empezamos a imprimir el array
+                echo "[" . $nl;
+
+                $items = [];
+                //Recorremos el array usando foreach para obtener clave y valor
+                foreach ($array as $key => $value) {
+                    // 2. Formato: [clave] => valor
+                    // Usamos var_export para manejar correctamente strings y números
+                    $items[] = var_export($key, true) . " => " . var_export($value, true);
+                }
+
+                // Unimos todos los elementos con una coma y un salto de línea
+                echo implode("," . $nl, $items) . $nl;
+
+                // Terminamos la impresión del array
+                echo "]" . $nl . $nl;
             }
 
             //Ejercicio 3: Consultas SELECT básicas
@@ -169,14 +199,16 @@
                 $stmt = $pdo->prepare('
                     SELECT * FROM productos ORDER BY precio ASC;
                 ');
+                $stmt->execute();
                 $array = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $contador = 1;
                 foreach ($array as $a) {
-                    print_r($a);
+                    echo "Producto " . $contador++ . ": ";
+                    imprimirArrayAsociativo($a);
                 }
-                print_r($array);
             } catch (Exception $e) {
                 $pdo->rollBack();
-                echo 'Error: ' . $e->getMessage();
+                echo 'Error: ' . $e->getMessage() . $nl . $nl;
             }
 
             // Insertar datos de ejemplo si la tabla está vacía
