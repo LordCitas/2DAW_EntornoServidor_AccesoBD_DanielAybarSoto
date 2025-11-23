@@ -63,6 +63,7 @@
             echo "<p class='success'>✅ Conexión exitosa a la base de datos</p>";
 
             //Ejercicio 1: Creamos las tablas
+            //Ponemos UNSIGNED en aquellos valores que no puedan ser negativos
             $pdo->exec("
                 CREATE TABLE IF NOT EXISTS categorias (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -76,8 +77,8 @@
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     nombre VARCHAR(100) NOT NULL,
                     categoria_id INT NOT NULL,
-                    precio FLOAT NOT NULL,
-                    stock INT NOT NULL DEFAULT 0,
+                    precio FLOAT UNSIGNED NOT NULL,
+                    stock INT UNSIGNED NOT NULL DEFAULT 0,
                     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(nombre),
                     
@@ -347,6 +348,106 @@
                 $pdo->rollBack();
                 echo 'Error (no se completó la actualización de la tabla): ' . $e->getMessage() . $nl . $nl;
             }
+
+            //5.B: Reduce el stock de un producto específico cuando se realiza una compra
+            echo "<h3 style='color:darkblue'>Ejercicio 5.B: Reduce el stock de un producto específico cuando se realiza una compra</h3>";
+
+            $cantidad = 4;
+            $producto = "Piña";
+            try {
+                //Comenzamos la transacción
+                $pdo->beginTransaction();
+
+                //Definimos la sentencia SQL a efectuar: disminuir el stock de un producto en función de la cantidad vendida
+                $stmt = $pdo->prepare('
+                    UPDATE productos SET stock = stock - ? WHERE nombre = ?;
+                ');
+
+                //Ejecutamos la sentencia pasando los valores necesarios
+                $stmt->execute([$cantidad, $producto]);
+
+                //Mostramos un mensaje de éxito
+                echo "Se ha actualizado el stock de $producto" . $nl . $nl;
+
+                //Finalizamos la transacción
+                $pdo->commit();
+            } catch (Exception $e) { //Si algo falla, cortamos la ejecución y mostramos un mensaje
+                $pdo->rollBack();
+                echo 'Error (no se completó la actualización de la tabla): ' . $e->getMessage() . $nl . $nl;
+            }
+
+            //5.C: Validar que el stock no sea negativo antes de actualizar
+            echo "<h3 style='color:darkblue'>Ejercicio 5.C: Validar que el stock no sea negativo antes de actualizar</h3>";
+
+            echo "<p>Esto ya lo he solucionado haciendo que el stock no tenga signo a nivel de tabla, es decir, que siempre será mayor o igual que 0</p>";
+
+            //Ejercicio 6: DELETE - Eliminar productos
+            echo "<h2 style='color:blue'>Ejercicio 6: DELETE - Eliminar productos</h2>";
+
+            //Primero debemos alterar la abla de productos para añadir la columna "eliminado"
+            try{
+                $stmt = $pdo->prepare('
+                    ALTER TABLE productos ADD COLUMN eliminado BOOLEAN NOT NULL DEFAULT FALSE;
+                ');
+                $stmt->execute();
+
+                //Mostramos un mensaje de éxito
+                echo "Se ha añadido la columna 'eliminado' a la tabla 'productos'" . $nl . $nl;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                echo 'Error: ' . $e->getMessage() . $nl . $nl;
+            }
+
+            //Ahora podemos pasar a "eliminar" los productos con stock a 0
+            try {
+                //Comenzamos la transacción
+                $pdo->beginTransaction();
+
+                //Definimos la sentencia SQL a efectuar: "Eliminar" los productos cuyo stock sea igual a 0
+                $stmt = $pdo->prepare('
+                    UPDATE productos SET eliminado = true WHERE stock = 0;
+                ');
+
+                //Ejecutamos la sentencia pasando los valores necesarios
+                $stmt->execute();
+
+                //Contamos y mostramos el número de cambios efectuados
+                $filas = $stmt->rowCount();
+                echo "Número de productos de la tabla 'productos' que han sido eliminados: " . $filas . $nl . $nl;
+
+                //Finalizamos la transacción
+                $pdo->commit();
+            } catch (Exception $e) { //Si algo falla, cortamos la ejecución y mostramos un mensaje
+                $pdo->rollBack();
+                echo 'Error (no se pudo eliminar algún producto): ' . $e->getMessage() . $nl . $nl;
+            }
+
+            //Ejercicio 7: Simulación de compra
+            echo "<h2 style='color:blue'>Ejercicio 7: Simulación de compra</h2>";
+            try {
+                //Comenzamos la transacción
+                $pdo->beginTransaction();
+
+                //Definimos la sentencia SQL a efectuar: "Eliminar" los productos cuyo stock sea igual a 0
+                $stmt = $pdo->prepare('
+                    UPDATE productos SET eliminado = true WHERE stock = 0;
+                ');
+
+                //Ejecutamos la sentencia pasando los valores necesarios
+                $stmt->execute();
+
+                //Contamos y mostramos el número de cambios efectuados
+                $filas = $stmt->rowCount();
+                echo "Número de productos de la tabla 'productos' que han sido eliminados: " . $filas . $nl . $nl;
+
+                //Finalizamos la transacción
+                $pdo->commit();
+            } catch (Exception $e) { //Si algo falla, cortamos la ejecución y mostramos un mensaje
+                $pdo->rollBack();
+                echo 'Error (no se pudo eliminar algún producto): ' . $e->getMessage() . $nl . $nl;
+            }
+
+
 
 
 
