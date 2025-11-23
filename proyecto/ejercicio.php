@@ -351,6 +351,39 @@
 
             //5.B: Reduce el stock de un producto específico cuando se realiza una compra
             echo "<h3 style='color:darkblue'>Ejercicio 5.B: Reduce el stock de un producto específico cuando se realiza una compra</h3>";
+            /*
+            //La voy a hacer una función para que podamos acceder a ella sin repetir código
+            function reducirStock(int $cantidad, string $producto): bool{
+                try {
+                    //Pasamos las variables $pdo y $nl como globales
+                    global $pdo;
+                    global $nl;
+
+                    //Comenzamos la transacción
+                    $pdo->beginTransaction();
+
+                    //Definimos la sentencia SQL a efectuar: disminuir el stock de un producto en función de la cantidad vendida
+                    $stmt = $pdo->prepare('
+                        UPDATE productos SET stock = stock - ? WHERE nombre = ?;
+                    ');
+
+                    //Ejecutamos la sentencia pasando los valores necesarios
+                    $stmt->execute([$cantidad, $producto]);
+
+                    //Mostramos un mensaje de éxito
+                    echo "Se ha actualizado el stock de $producto" . $nl . $nl;
+
+                    //Finalizamos la transacción
+                    $pdo->commit();
+
+                    //Devolvemos true como signo de que se ha realizado bien el proceso
+                    return true;
+                } catch (Exception $e) { //Si algo falla, cortamos la ejecución y mostramos un mensaje
+                    $pdo->rollBack();
+                    echo 'Error (no se completó la actualización de la tabla): ' . $e->getMessage() . $nl . $nl;
+                    return false;
+                }
+            }*/
 
             $cantidad = 4;
             $producto = "Piña";
@@ -360,8 +393,8 @@
 
                 //Definimos la sentencia SQL a efectuar: disminuir el stock de un producto en función de la cantidad vendida
                 $stmt = $pdo->prepare('
-                    UPDATE productos SET stock = stock - ? WHERE nombre = ?;
-                ');
+                        UPDATE productos SET stock = stock - ? WHERE nombre = ?;
+                    ');
 
                 //Ejecutamos la sentencia pasando los valores necesarios
                 $stmt->execute([$cantidad, $producto]);
@@ -375,6 +408,7 @@
                 $pdo->rollBack();
                 echo 'Error (no se completó la actualización de la tabla): ' . $e->getMessage() . $nl . $nl;
             }
+
 
             //5.C: Validar que el stock no sea negativo antes de actualizar
             echo "<h3 style='color:darkblue'>Ejercicio 5.C: Validar que el stock no sea negativo antes de actualizar</h3>";
@@ -424,45 +458,6 @@
 
             //Ejercicio 7: Simulación de compra
             echo "<h2 style='color:blue'>Ejercicio 7: Simulación de compra</h2>";
-            try {
-                //Comenzamos la transacción
-                $pdo->beginTransaction();
-
-                //Definimos la sentencia SQL a efectuar: "Eliminar" los productos cuyo stock sea igual a 0
-                $stmt = $pdo->prepare('
-                    UPDATE productos SET eliminado = true WHERE stock = 0;
-                ');
-
-                //Ejecutamos la sentencia pasando los valores necesarios
-                $stmt->execute();
-
-                //Contamos y mostramos el número de cambios efectuados
-                $filas = $stmt->rowCount();
-                echo "Número de productos de la tabla 'productos' que han sido eliminados: " . $filas . $nl . $nl;
-
-                //Finalizamos la transacción
-                $pdo->commit();
-            } catch (Exception $e) { //Si algo falla, cortamos la ejecución y mostramos un mensaje
-                $pdo->rollBack();
-                echo 'Error (no se pudo eliminar algún producto): ' . $e->getMessage() . $nl . $nl;
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
             // Insertar datos de ejemplo si la tabla está vacía
             $count = $pdo->query("SELECT COUNT(*) FROM usuarios")->fetchColumn();
@@ -501,6 +496,89 @@
 
                 echo "</table>";
             }
+
+            function hacerCompra(int $usuario, int $producto, int $cantidad): void{
+                try {
+                    //Recuperamos las variables pdo y nl como globales
+                    global $pdo;
+                    global $nl;
+
+                    //Comenzamos la transacción
+                    $pdo->beginTransaction();
+
+                    //Primero debemos comprobar que el producto está en la tabla
+                    $stmt_producto = $pdo->prepare('
+                        SELECT * FROM productos WHERE id = ?;
+                    ');
+
+                    //Ejecutamos la sentencia pasando los valores necesarios
+                    //Como la sentencia nos devuelve true/false, podemos usarla de condición en un booleano
+                    if(!$stmt_producto->execute([$producto])){
+                        throw new Exception("No se ha encontrado un producto con ese ID" . $nl . $nl);
+                    }
+
+                    //También debemos comprobar que el usuario está en la tabla
+                    $stmt_usuario = $pdo->prepare('
+                        SELECT COUNT(id) FROM usuarios WHERE id = ?;
+                    ');
+
+                    if(!$stmt_usuario->execute([$usuario])){
+                        throw new Exception("No se ha encontrado un usuario con ese ID" . $nl . $nl);
+                    }
+
+
+                    //Ahora debemos reducir el stock del producto en función del número que se hayan comprado
+                    //Si falla, será porque el stock es insuficiente
+                    //Definimos la sentencia SQL a efectuar: disminuir el stock de un producto en función de la cantidad vendida
+                    $stmt_actualizar = $pdo->prepare('
+                        UPDATE productos SET stock = stock - ? WHERE id = ?;
+                    ');
+
+                    //Ejecutamos la sentencia pasando los valores necesarios
+                    if(!$stmt_actualizar->execute([$cantidad, $producto])){
+                        throw new Exception("El stock del producto es insuficiente" . $nl . $nl);
+                    }
+
+                    //Mostramos un mensaje de éxito
+                    echo "Se ha actualizado el stock del producto con ID $producto" . $nl . $nl;
+
+                    //Ahora pasamos a calcular el total de la compra
+                    //Primero tomamos el valor del precio del producto en base a su ID
+                    $stmt_precio = $pdo->prepare('
+                        SELECT precio FROM productos WHERE id = ?;
+                    ');
+
+                    //Ejecutamos la sentencia pasando los valores necesarios y la asignamos a una variable
+                    $stmt_precio->execute([$producto]);
+                    $precio = $stmt_precio->fetchColumn();
+
+                    //Calculamos el total
+                    $total = $precio * $cantidad;
+
+                    //Definimos la sentencia SQL a efectuar: Insertar un nuevo pedido en la tabla pedidos
+                    $stmt_pedido = $pdo->prepare('
+                        INSERT INTO pedidos (usuario_id, total) VALUES (?, ?);
+                    ');
+
+                    //Ejecutamos la sentencia pasando los valores necesarios
+                    $stmt_pedido->execute([$usuario, $total]);
+
+                    //Mostramos un mensaje de éxito de la inserción
+                    echo "Se ha insertado una entrada en la tabla 'pedidos'" . $nl . $nl;
+
+                    //Finalizamos la transacción
+                    $pdo->commit();
+                } catch (Exception $e) { //Si algo falla, cortamos la ejecución y mostramos un mensaje
+                    $pdo->rollBack();
+                    echo 'Error: ' . $e->getMessage() . $nl . $nl;
+                }
+            }
+
+            hacerCompra(2, 2, 2);
+
+
+
+
 
         } catch(PDOException $e) {
             echo "<p class='error'>❌ Error de conexión: " . $e->getMessage() . "</p>";
