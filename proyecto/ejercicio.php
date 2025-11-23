@@ -103,6 +103,7 @@
             ");
 
             //Ejercicio 2: insertar valores iniciales en las tablas productos y categorías
+            echo "<h2 style='color:blue'>Ejercicio 2: insertar valores iniciales en las tablas productos y categorías</h2>";
             //Definimos el array de categorías a insertar
             $categorias = ['Cítricos', 'Frutas Rojas', 'Tropicales'];
 
@@ -194,7 +195,10 @@
             }
 
             //Ejercicio 3: Consultas SELECT básicas
+            echo "<h2 style='color:blue'>Ejercicio 3: Consultas Select Básicas</h2>";
             //3.A Obtener todos los productos ordenados por precio (menor a mayor)
+            echo "<h3 style='color:darkblue'>Ejercicio 3.A: Obtener todos los productos ordenados por precio (menor a mayor)</h3>";
+
             try{
                 $stmt = $pdo->prepare('
                     SELECT * FROM productos ORDER BY precio ASC;
@@ -214,6 +218,7 @@
             }
 
             //3.B Obtener todos los productos de una categoría
+            echo "<h3 style='color:darkblue'>Ejercicio 3.B: Obtener todos los productos de una categoría</h3>";
             $nombre_categoria = "Frutas Rojas";
             try{
                 //Primero tenemos que buscar el id asociado al nombre de la categoría
@@ -251,14 +256,16 @@
             }
 
             //3.C Listar los productos con stock menor a 20
+            echo "<h3 style='color:darkblue'>Ejercicio 3.C: Listar los productos con stock menor a 20</h3>";
             try{
+                $maximo = 30;
                 $stmt = $pdo->prepare('
-                    SELECT * FROM productos WHERE stock < 20;
+                    SELECT * FROM productos WHERE stock < ?;
                 ');
-                $stmt->execute();
+                $stmt->execute([$maximo]);
                 $array = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                echo "Los productos con menos de 20 unidades en stock son: " . $nl . $nl;
+                echo "Los productos con menos de $maximo unidades en stock son: " . $nl . $nl;
                 $contador = 1;
                 foreach ($array as $a) {
                     echo "Producto " . $contador++ . ": ";
@@ -270,6 +277,7 @@
             }
 
             //3.D Contar cuántos productos hay en total
+            echo "<h3 style='color:darkblue'>Ejercicio 3.D: Contar cuántos productos hay en total</h3>";
             try{
                 $stmt = $pdo->prepare('
                     SELECT COUNT(id) FROM productos;
@@ -283,6 +291,77 @@
                 $pdo->rollBack();
                 echo 'Error: ' . $e->getMessage() . $nl . $nl;
             }
+
+            //Ejercicio 4: JOIN - Productos con categoría
+            echo "<h2 style='color:blue'>Ejercicio 4: JOIN - Productos con categoría</h2>";
+
+            try{
+                $stmt = $pdo->prepare('
+                    SELECT productos.nombre AS nombre_producto, productos.precio, categorias.nombre AS nombre_categoria
+                    FROM productos 
+                    LEFT JOIN categorias ON productos.categoria_id = categorias.id
+                    ORDER BY productos.categoria_id, productos.precio;
+                ');
+                $stmt->execute();
+                $array = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                //Mostramos los resultados
+                echo "El nombre, precio y nombre de categoría de los productos son: " . $nl . $nl;
+                $contador = 1;
+                foreach ($array as $a) {
+                    echo "Producto " . $contador++ . ": ";
+                    imprimirArrayAsociativo($a);
+                }
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                echo 'Error: ' . $e->getMessage() . $nl . $nl;
+            }
+
+            //Ejercicio 5: UPDATE - Cambiar precios
+            echo "<h2 style='color:blue'>Ejercicio 5: UPDATE - Cambiar precios</h2>";
+
+            //5.A Aumentar el precio de todos los productos de una categoría en un 10%
+            echo "<h3 style='color:darkblue'>Ejercicio 5.A: Aumentar el precio de todos los productos de una categoría en un 10%</h3>";
+
+            $multiplicador = 10;
+            $categoria = "Frutas Rojas";
+            try {
+                //Comenzamos la transacción
+                $pdo->beginTransaction();
+
+                //Definimos la sentencia SQL a efectuar: multiplicar el precio de los productos cuyo categoria_id coincida con el asocidado a la categoría introducida
+                $stmt = $pdo->prepare('
+                    UPDATE productos SET precio = precio * ? WHERE categoria_id = (SELECT id FROM categorias WHERE nombre = ?);
+                ');
+
+                //Ejecutamos la sentencia pasando los valores necesarios
+                $stmt->execute([$multiplicador, $categoria]);
+
+                //Contamos y mostramos el número de cambios efectuados
+                $filas = $stmt->rowCount();
+                echo $filas . " entradas de $categoria han sido actualizadas en la tabla 'productos'" . $nl . $nl;
+
+                //Finalizamos la transacción
+                $pdo->commit();
+            } catch (Exception $e) { //Si algo falla, cortamos la ejecución
+                $pdo->rollBack();
+                echo 'Error (no se completó la actualización de la tabla): ' . $e->getMessage() . $nl . $nl;
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
             // Insertar datos de ejemplo si la tabla está vacía
             $count = $pdo->query("SELECT COUNT(*) FROM usuarios")->fetchColumn();
