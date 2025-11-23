@@ -128,7 +128,7 @@
                 echo $insertados . ' entradas han sido insertadas en la tabla \'categorias\'' . $nl . $nl;
             } catch (Exception $e) { //Si hay algún error, deshacemos los cambios y mostramos un mensaje
                 $pdo->rollBack();
-                echo 'Error: ' . $e->getMessage() . $nl . $nl;
+                echo 'Error (no se completó la inserción): ' . $e->getMessage() . $nl . $nl;
             }
 
             //Definimos el array de productos para insertar
@@ -161,7 +161,7 @@
                 echo $insertados . ' entradas han sido insertadas en la tabla \'productos\'' . $nl . $nl;
             } catch (Exception $e) {
                 $pdo->rollBack();
-                echo 'Error: ' . $e->getMessage() . $nl . $nl;
+                echo 'Error (no se completó la inserción): ' . $e->getMessage() . $nl . $nl;
             }
 
             //Función que imprime un array asociativo
@@ -201,11 +201,84 @@
                 ');
                 $stmt->execute();
                 $array = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                echo "Los productos ordenados de menor a mayor precio son: " . $nl . $nl;
                 $contador = 1;
                 foreach ($array as $a) {
                     echo "Producto " . $contador++ . ": ";
                     imprimirArrayAsociativo($a);
                 }
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                echo 'Error: ' . $e->getMessage() . $nl . $nl;
+            }
+
+            //3.B Obtener todos los productos de una categoría
+            $nombre_categoria = "Frutas Rojas";
+            try{
+                //Primero tenemos que buscar el id asociado al nombre de la categoría
+                $stmt_id = $pdo->prepare('
+                    SELECT id FROM categorias WHERE nombre = ?
+                ');
+
+                $stmt_id->execute([$nombre_categoria]);
+
+                $categoria_id = $stmt_id->fetchColumn();
+
+                //Si no encontramos un id, cortamos la ejecución del bloque
+                if(!$categoria_id){
+                    echo "Error: La categoría $nombre_categoria no existe" . $nl;
+                    return;
+                }
+
+                $stmt = $pdo->prepare('
+                    SELECT * FROM productos WHERE categoria_id = ?;
+                ');
+                $stmt->execute([$categoria_id]);
+                $array = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                //Listamos los resultados
+                echo "Los productos de la categoría $nombre_categoria son: " . $nl . $nl;
+
+                $contador = 1;
+                foreach ($array as $a) {
+                    echo "Producto " . $contador++ . ": ";
+                    imprimirArrayAsociativo($a);
+                }
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                echo 'Error: ' . $e->getMessage() . $nl . $nl;
+            }
+
+            //3.C Listar los productos con stock menor a 20
+            try{
+                $stmt = $pdo->prepare('
+                    SELECT * FROM productos WHERE stock < 20;
+                ');
+                $stmt->execute();
+                $array = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                echo "Los productos con menos de 20 unidades en stock son: " . $nl . $nl;
+                $contador = 1;
+                foreach ($array as $a) {
+                    echo "Producto " . $contador++ . ": ";
+                    imprimirArrayAsociativo($a);
+                }
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                echo 'Error: ' . $e->getMessage() . $nl . $nl;
+            }
+
+            //3.D Contar cuántos productos hay en total
+            try{
+                $stmt = $pdo->prepare('
+                    SELECT COUNT(id) FROM productos;
+                ');
+                $stmt->execute();
+                $numero = $stmt->fetchColumn();
+
+                //Mostramos los resultados
+                echo "Entradas en la tabla de productos: " . $numero;
             } catch (Exception $e) {
                 $pdo->rollBack();
                 echo 'Error: ' . $e->getMessage() . $nl . $nl;
